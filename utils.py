@@ -83,3 +83,5 @@ def p_and_eval(model, X_test, y_test):
 
     print("Classification report rebuilt from confusion matrix:\n"
           f"{classification_report(y_true, y_pred)}\n")
+    
+    return predicted
