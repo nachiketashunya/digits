@@ -17,7 +17,9 @@ import matplotlib.pyplot as plt
 # Import datasets, classifiers and performance metrics
 from sklearn import datasets, metrics, svm
 from sklearn.model_selection import train_test_split
-from utils import data_preprocess, train_model, read_digits, split_train_dev_test, p_and_eval
+from utils import data_preprocess, train_model, read_digits, split_train_dev_test, p_and_eval, hparams_tune
+import itertools
+from itertools import permutations
 import pdb
 
 ###############################################################################
@@ -58,32 +60,38 @@ import pdb
 
 ## Split data 
 X, y = read_digits()
-# X_train, X_test, y_train, y_test = split_dataset(X, y, test_size=0.3)
-X_train, X_test, X_dev, y_train, y_test, y_dev = split_train_dev_test(X, y, test_size=0.3, dev_size=0.3)
 
-## Hyperparameter tunning
-gammas = [0.1, 0.001, 0.5, 1]
-cparams = [0.3, 1, 2, 0.7, 2]
 
-## Use the preprocessed datas
-X_train = data_preprocess(X_train)
-X_test = data_preprocess(X_test)
-X_dev = data_preprocess(X_dev)
+gammas = [0.1, 0.001, 0.005, 0.123, 0.879, 0.0009]
+cparams = [0.3, 1, 2, 0.7, 2, 8, 7, 0.9]
 
-best_accur_sofar = -1
-for g in gammas:
-    for c in cparams:
-        cur_model = train_model(X_train, y_train, {'gamma': g, 'C' : c}, model_type='svm')
+p_comb = {
+    'gammas' : gammas,
+    'cparams' : cparams
+}
+
+test_size = [0.1, 0.2, 0.3]
+dev_size = [0.1, 0.2, 0.3]
+
+for tsize in test_size:
+    for dsize in dev_size:
+        # X_train, X_test, y_train, y_test = split_dataset(X, y, test_size=0.3)
+        X_train, X_test, X_dev, y_train, y_test, y_dev = split_train_dev_test(X, y, test_size=tsize, dev_size=dsize)
+
+        ## Use the preprocessed datas
+        X_train = data_preprocess(X_train)
+        X_test = data_preprocess(X_test)
+        X_dev = data_preprocess(X_dev)
+
+        # Calling hparams function to test with different hyperparameters
+        best_params, best_model, best_accur = hparams_tune(X_train, X_dev, y_train, y_dev, p_comb)
+
+        model = train_model(X_train, y_train, {'gamma': best_params[0], 'C' : best_params[1]}, model_type='svm')
         # Predict the value of the digit on the test subset
-        cur_accuracy = p_and_eval(cur_model, X_test, y_test)
 
-        if cur_accuracy > best_accur_sofar:
-            print("New Best Accuracy : ", cur_accuracy)
-            best_accur_sofar = cur_accuracy
-            optimal_g = g
-            optimal_c = c 
+        # Get the test accuracy 
+        test_accur = p_and_eval(model, X_test, y_test)
 
-print(f"Training with optimal gamma {optimal_g} and optimal C {optimal_c}")
-model = train_model(X_train, y_train, {'gamma': optimal_g, 'C' : optimal_c}, model_type='svm')
-# Predict the value of the digit on the test subset
-predicted = p_and_eval(model, X_test, y_test)
+        print(f"test_size={tsize} dev_size={dsize} train_size={1 - (tsize + dsize)} train_acc={best_accur:.2f} dev_acc={best_accur:.2f} test_acc={test_accur:.2f}")
+        print(f"Best Hyperparameters: ( gamma : {best_params[0]} , C : {best_params[1]} )\n")
+
