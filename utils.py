@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 import itertools
 from itertools import product
+from skimage.transform import resize
+import numpy as np
 
 
 def read_digits():
@@ -21,6 +23,18 @@ def data_preprocess(data):
     data = data.reshape((n_samples, -1))
     return data 
 
+
+def resize_images(data, height, width):
+    # Resize the images
+    resized_images = []
+    for image in data:
+        resized_image = resize(image, (height, width), anti_aliasing=True)
+        resized_images.append(resized_image)
+
+    # Convert the list of resized images back to a NumPy array
+    data = np.array(resized_images)
+
+    return data
  
 ## Function for splitting data
 def split_dataset(X, y, test_size, random_state = 1):

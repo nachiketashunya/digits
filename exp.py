@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 # Import datasets, classifiers and performance metrics
 from sklearn import datasets, metrics, svm
 from sklearn.model_selection import train_test_split
-from utils import data_preprocess, train_model, read_digits, split_train_dev_test, p_and_eval, hparams_tune
+from utils import data_preprocess, train_model, read_digits, split_train_dev_test, p_and_eval, hparams_tune, resize_images
 import itertools
 from itertools import permutations
 import pdb
@@ -73,37 +73,50 @@ p_comb = {
     'cparams' : cparams
 }
 
-test_size = [0.1, 0.2, 0.3]
-dev_size = [0.1, 0.2, 0.3]
+test_size = 0.2
+dev_size = 0.1
 
-for tsize in test_size:
-    for dsize in dev_size:
-        # X_train, X_test, y_train, y_test = split_dataset(X, y, test_size=0.3)
-        X_train, X_test, X_dev, y_train, y_test, y_dev = split_train_dev_test(X, y, test_size=tsize, dev_size=dsize)
+# X_train, X_test, y_train, y_test = split_dataset(X, y, test_size=0.3)
+X_train, X_test, X_dev, y_train, y_test, y_dev = split_train_dev_test(X, y, test_size=test_size, dev_size=dev_size)
 
-        ## Use the preprocessed datas
-        X_train = data_preprocess(X_train)
-        X_test = data_preprocess(X_test)
-        X_dev = data_preprocess(X_dev)
+## Use the preprocessed datas
+X_train = data_preprocess(X_train)
+X_test = data_preprocess(X_test)
+X_dev = data_preprocess(X_dev)
 
-        total_samples = len(X)
-        train_samples = len(X_train)
-        dev_samples = len(X_dev)
-        test_samples = len(X_test)
+total_samples = len(X)
+train_samples = len(X_train)
+dev_samples = len(X_dev)
+test_samples = len(X_test)
 
-        # Print the number of samples in each set
-        print(f"Total Samples: {total_samples}, Train Samples: {train_samples}, Dev Samples: {dev_samples}, Test Samples: {test_samples}\n")
+# Print the number of samples in each set
+print(f"Total Samples: {total_samples}, Train Samples: {train_samples}, Dev Samples: {dev_samples}, Test Samples: {test_samples}\n")
 
 
-        # Calling hparams function to test with different hyperparameters
-        best_params, best_model, best_accur = hparams_tune(X_train, X_dev, y_train, y_dev, p_comb)
+resizes = [[8, 8], [6, 6], [4, 4]]
+## Use the preprocessed datas
+X_train = data_preprocess(X_train)
+X_test = data_preprocess(X_test)
+X_dev = data_preprocess(X_dev)
 
-        model = train_model(X_train, y_train, {'gamma': best_params[0], 'C' : best_params[1]}, model_type='svm')
-        # Predict the value of the digit on the test subset
+for rs in resizes:
+    X_train = resize_images(X_train, resizes[0], resizes[1])
+    X_test = resize_images(X_test, resizes[0], resizes[1])
+    X_dev = resize_images(X_dev, resizes[0], resizes[1])
+    y_train = resize_images(y_train, resizes[0], resizes[1])
+    y_test = resize_images(y_test, resizes[0], resizes[1])
+    y_dev = resize_images(y_dev, resizes[0], resizes[1])
 
-        # Get the test accuracy 
-        test_accur = p_and_eval(model, X_test, y_test)
 
-        print(f"test_size={tsize} dev_size={dsize} train_size={1 - (tsize + dsize)} train_acc={best_accur:.2f} dev_acc={best_accur:.2f} test_acc={test_accur:.2f}")
-        print(f"Best Hyperparameters: ( gamma : {best_params[0]} , C : {best_params[1]} )\n")
+    # Calling hparams function to test with different hyperparameters
+    best_params, best_model, best_accur = hparams_tune(X_train, X_dev, y_train, y_dev, p_comb)
+
+    model = train_model(X_train, y_train, {'gamma': best_params[0], 'C' : best_params[1]}, model_type='svm')
+    # Predict the value of the digit on the test subset
+
+    # Get the test accuracy 
+    test_accur = p_and_eval(model, X_test, y_test)
+
+    print(f"Image size : {resizes[0]} * {resizes[1]} test_size={test_size} dev_size={dev_size} train_size={1 - (test_size + dev_size)} train_acc={best_accur:.2f} dev_acc={best_accur:.2f} test_acc={test_accur:.2f}")
+    print(f"Best Hyperparameters: ( gamma : {best_params[0]} , C : {best_params[1]} )\n")
 
