@@ -7,6 +7,7 @@ from sklearn.metrics import classification_report, confusion_matrix, ConfusionMa
 import itertools
 from itertools import product
 
+
 def read_digits():
     data = datasets.load_digits()
     X = data.images
