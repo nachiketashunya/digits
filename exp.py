@@ -61,6 +61,9 @@ import pdb
 ## Split data 
 X, y = read_digits()
 
+# Size of images 
+height, width = X[0].shape
+print(f"Height : {height}, Width : {width}\n")
 
 gammas = [0.1, 0.001, 0.005, 0.123, 0.879, 0.0009]
 cparams = [0.3, 1, 2, 0.7, 2, 8, 7, 0.9]
@@ -82,6 +85,15 @@ for tsize in test_size:
         X_train = data_preprocess(X_train)
         X_test = data_preprocess(X_test)
         X_dev = data_preprocess(X_dev)
+
+        total_samples = len(X)
+        train_samples = len(X_train)
+        dev_samples = len(X_dev)
+        test_samples = len(X_test)
+
+        # Print the number of samples in each set
+        print(f"Total Samples: {total_samples}, Train Samples: {train_samples}, Dev Samples: {dev_samples}, Test Samples: {test_samples}\n")
+
 
         # Calling hparams function to test with different hyperparameters
         best_params, best_model, best_accur = hparams_tune(X_train, X_dev, y_train, y_dev, p_comb)
