@@ -22,3 +22,4 @@ jobs:
         run:  pip3 install --no-cache-dir -r requirements.txt
       - name: Run experiment
         run: python exp.py
+      - run: echo "This is a dummy echo statement for Quiz-1"
