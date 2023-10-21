@@ -1,11 +1,16 @@
 # Import datasets, classifiers and performance metrics
 import matplotlib.pyplot as plt
 
-from sklearn import datasets, metrics, svm
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+# Import datasets, classifiers and performance metrics
+import matplotlib.pyplot as plt
 import itertools
-from itertools import product
+from sklearn import datasets, metrics, svm , tree
+from sklearn.model_selection import train_test_split
+from joblib import dump,load
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+
+import numpy as np
+
 
 def read_digits():
     data = datasets.load_digits()
@@ -20,6 +25,24 @@ def data_preprocess(data):
     data = data.reshape((n_samples, -1))
     return data 
 
+
+def resize_images(data, height, width):
+    # Resize the images
+    resized_images = []
+    for image in data:
+        resized_image = resize(image, (height, width), anti_aliasing=True)
+        resized_images.append(resized_image)
+
+    # Convert the list of resized images back to a NumPy array
+    data = np.array(resized_images)
+
+    return data
+
+def get_all_h_param_comb_svm(gamma_list,c_list):
+    return list(itertools.product(gamma_list, c_list))
+
+def get_all_h_param_comb_tree(depth_list):
+    return list(itertools.product(depth_list))
  
 ## Function for splitting data
 def split_dataset(X, y, test_size, random_state = 1):
@@ -32,7 +55,8 @@ def split_dataset(X, y, test_size, random_state = 1):
 def train_model(x, y, model_params, model_type='svm'):
     if model_type == 'svm':
         clf = svm.SVC
-
+    if model_type=='tree':
+        clf = tree.DecisionTreeClassifier
     model = clf(**model_params)
     # pdb.set_trace()
     model.fit(x, y)
@@ -41,34 +65,40 @@ def train_model(x, y, model_params, model_type='svm'):
 
 def split_train_dev_test(X, y, test_size, dev_size):
     # Split data into test and temporary (train + dev) sets
-    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, shuffle=False)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, shuffle=True)
     
     # Calculate the ratio between dev and temp sizes
     dev_ratio = dev_size / (1 - test_size)
     
     # Split temporary data into train and dev sets
-    X_train, X_dev, y_train, y_dev = train_test_split(X_temp, y_temp, test_size=dev_ratio, shuffle=False)
+    X_train, X_dev, y_train, y_dev = train_test_split(X_temp, y_temp, test_size=dev_ratio, shuffle=True)
     
     return X_train, X_test, X_dev, y_train, y_test, y_dev
 
-def p_and_eval(model, X_test, y_test):
-    # Predict the values using the model
-    predicted = model.predict(X_test)    
-    return metrics.accuracy_score(y_test, predicted)
+def p_and_eval(model, metric, X_test, y_test):
+    predicted = model.predict(X_test)
+    accuracy = metric(y_pred=predicted, y_true=y_test)
+    return accuracy  
 
 # Function for hyperparameter tunning
-def hparams_tune(X_train, X_dev, y_train, y_dev, params):
-    best_accur_sofar = -1
+def hparams_tune(X_train, y_train, X_dev, y_dev, all_combos,metric,model_type='svm'):
+    best_accuracy = -1
+    best_model=None
+    best_hparams = None
+    best_model_path=""
 
-    all_comb = list(itertools.product(params['gammas'], params['cparams']))
-    for gc in all_comb:
-        cur_model = train_model(X_train, y_train, {'gamma': gc[0], 'C' : gc[1]}, model_type='svm')
-        # Predict the value of the digit on the test subset
-        cur_accuracy = p_and_eval(cur_model, X_dev, y_dev)
-
-        if cur_accuracy > best_accur_sofar:
-            best_accur_sofar = cur_accuracy
-            best_hparam = gc  
+    for param in all_combos:
+        if model_type=="Production_Model_svm":
+            cur_model = train_model(X_train,y_train,{'gamma':param[0],'C':param[1]},model_type='svm')
+        if model_type=="Candidate_Model_tree":
+            cur_model = train_model(X_train,y_train,{'max_depth':param[0]},model_type='tree')    
+        val_accuracy = p_and_eval(cur_model,metric,X_dev,y_dev)
+        if val_accuracy > best_accuracy:
+            best_accuracy = val_accuracy
+            best_hparams=param
+            best_model_path = "./models/{}{}.joblib".format(model_type, param).replace(":", "")
             best_model = cur_model
-
-    return best_hparam, best_model, best_accur_sofar
+        
+    dump(best_model,best_model_path) 
+    # print("Model save at {}".format(best_model_path))   
+    return best_hparams, best_model_path, best_accuracy 
